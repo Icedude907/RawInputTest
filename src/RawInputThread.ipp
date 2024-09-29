@@ -9,42 +9,71 @@
 #include <map>
 
 #include <Windows.h>
-
-#include "Util.ipp"
 #include "WinUtil.ipp"
+
+#include "IntTypes.hpp"
+#include "Util.hpp"
 #include "KeyCodes.hpp"
-#include "Console.ipp"
+#include "Console.hpp"
+#include "InputDisplay.ipp"
 
-// std::unordered_set<KeyboardKey> pressedButtons;
+static InputDisplay inputDisplay;
 
-struct dummy{};
+// TODO: Process touchpad data
+// TODO: Make keyboard and mouse displays better (as the comment in RawInputTool.cpp)
+void processRawInput(const bool unfocusedInput, const RAWINPUT input[]){
+    auto header = input->header;
+    std::stringstream ss;
 
-// Handles rendering of inputdisplays to the console.
-struct InputDisplays{
-    std::map<HANDLE, std::pair<i16, dummy>> displayedDevices;
+    if(input->header.dwType == RIM_TYPEKEYBOARD) {
+        auto keybd = input->data.keyboard;
+        KeyboardKey kk(keybd.MakeCode, keybd.Flags);
+        State& state = inputDisplay.getStateOrAdd(header.hDevice);
+        if(keybd.Flags & 1 == RI_KEY_BREAK){ state.kbdst.remove(kk); }
+        else{ state.kbdst.add(kk); }
+        ss << "KBD : " << state.kbdst.to_string();
+        if(keybd.ExtraInformation != 0){ ss <<" other: 0x" << std::hex << keybd.ExtraInformation << std::dec; }
 
-    // Tries to add the handle to the console. If it is already registered, nothing happens.
-    void add(HANDLE handle){
-        if(displayedDevices.find(handle) != displayedDevices.end()) return;
-        std::stringstream ss;
-        ss << 'x' << std::setfill('0') << std::setw(8) << std::hex << (size_t)handle;
-        displayedDevices.insert({handle, {cout.CreateStatusLine(ss.str()), {}}});
-    }
-    // Removes the given device.
-    // TODO: Reorder the lines when removing.
-    void remove(HANDLE handle){
-        auto entry = displayedDevices.find(handle);
-        auto entryLine = entry->second.first;
-        if(entry == displayedDevices.end()) return;
-        cout.DeleteStatusLine(entryLine);
-        // Shifts all the lines below up by one.
-        for (auto &[key, val] : displayedDevices){
-            if(val.first > entryLine) val.first--;
+    }else if(input->header.dwType == RIM_TYPEMOUSE){
+        auto mouse = input->data.mouse;
+        ss << "MOUS: " << std::dec;
+        
+        if(mouse.lLastX != 0 || mouse.lLastY != 0){
+            if(mouse.usFlags == MOUSE_MOVE_RELATIVE) {
+                ss << "Rel: dx " << mouse.lLastX << ", dy " << mouse.lLastY;
+            }
+            if(mouse.usFlags == MOUSE_MOVE_ABSOLUTE) {
+                ss << "Abs:  x " << mouse.lLastX << ",  y " << mouse.lLastY;
+            }
+            if(mouse.usButtonFlags != 0){ ss << ", "; }
         }
-        displayedDevices.erase(handle);
+        if(mouse.ulExtraInformation != 0){ ss <<" other: 0x" << std::hex << mouse.ulExtraInformation << std::dec; }
+
+        if(mouse.usButtonFlags != 0){
+            if(mouse.usButtonFlags & RI_MOUSE_LEFT_BUTTON_DOWN  ){ ss << "Lp "; }
+            if(mouse.usButtonFlags & RI_MOUSE_LEFT_BUTTON_UP    ){ ss << "L^ "; }
+            if(mouse.usButtonFlags & RI_MOUSE_RIGHT_BUTTON_DOWN ){ ss << "Rp "; }
+            if(mouse.usButtonFlags & RI_MOUSE_RIGHT_BUTTON_UP   ){ ss << "R^ "; }
+            if(mouse.usButtonFlags & RI_MOUSE_MIDDLE_BUTTON_DOWN){ ss << "Mp "; }
+            if(mouse.usButtonFlags & RI_MOUSE_MIDDLE_BUTTON_UP  ){ ss << "M^ "; }
+            if(mouse.usButtonFlags & RI_MOUSE_BUTTON_4_DOWN     ){ ss << "4p "; }
+            if(mouse.usButtonFlags & RI_MOUSE_BUTTON_4_UP       ){ ss << "4^ "; }
+            if(mouse.usButtonFlags & RI_MOUSE_BUTTON_5_DOWN     ){ ss << "5p "; }
+            if(mouse.usButtonFlags & RI_MOUSE_BUTTON_5_UP       ){ ss << "5^ "; }
+            if(mouse.usButtonFlags & RI_MOUSE_WHEEL){
+                ss << "Wheel: " << (SHORT)mouse.usButtonData;
+            }
+            if(mouse.usButtonFlags & RI_MOUSE_HWHEEL){
+                ss << "HWhel: " << (SHORT)mouse.usButtonData;
+            }
+        }
+        ss;
+    }else{
+        ss << "Other data: ";
     }
-};
-static InputDisplays inputDisplay;
+    inputDisplay.updateOrAdd(header.hDevice, ss.str());
+}
+
 
 LRESULT CALLBACK windowCallback(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam){
     // Looking at `rawinputtest2` you will see a number of extra messages handled for completedness sake
@@ -55,7 +84,7 @@ LRESULT CALLBACK windowCallback(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         switch(wParam){
             case GIDC_ARRIVAL: 
                 ss << "New Dev: ";
-                inputDisplay.add(deviceHandle);
+                // inputDisplay.add(deviceHandle);
                 break;
             case GIDC_REMOVAL: 
                 ss << "Removed: ";
@@ -70,7 +99,16 @@ LRESULT CALLBACK windowCallback(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         cout.AppendMessage(ss.str());
         return 0; // 0 = good
     }else if(msg == WM_INPUT){
+        HRAWINPUT rawInputPacketHandle = (HRAWINPUT)lParam;
+        UINT size = 0;
+        GetRawInputData(rawInputPacketHandle, RID_INPUT, NULL, &size, sizeof(RAWINPUTHEADER));
+        RAWINPUT* input = new RAWINPUT[size];
+        GetRawInputData(rawInputPacketHandle, RID_INPUT, input, &size, sizeof(RAWINPUTHEADER));
 
+        processRawInput(GET_RAWINPUT_CODE_WPARAM(wParam), input);
+
+        delete[] input;
+        return TRUE;
     }
     
 	return DefWindowProc(hwnd, msg, wParam, lParam);
@@ -100,7 +138,7 @@ HWND createWindow(const WNDPROC callback, const LPCSTR className, const LPCSTR w
 }
 
 void registerDevices(const HWND windowHandle){
-    const size_t deviceCount = 2;
+    const size_t deviceCount = 3;
     RAWINPUTDEVICE device[deviceCount];
     device[0].usUsagePage = HID_USAGE_PAGE_GENERIC;
     device[0].usUsage = HID_USAGE_GENERIC_KEYBOARD;
@@ -112,6 +150,14 @@ void registerDevices(const HWND windowHandle){
     device[1].dwFlags = RIDEV_INPUTSINK | RIDEV_NOLEGACY | RIDEV_DEVNOTIFY;
     device[1].hwndTarget = windowHandle;
 
+    // Precision touchpad. Part of other.
+    // Many touchpads also send keyboard and mouse data on other device pages to simulate actions.
+    // However, raw input is normally best.
+    device[2].usUsagePage = 0x000D;
+    device[2].usUsage = 0x0005;
+    device[2].dwFlags = RIDEV_INPUTSINK | RIDEV_DEVNOTIFY;
+    device[2].hwndTarget = windowHandle;
+
     if (RegisterRawInputDevices(device, deviceCount, sizeof(device[0])) == FALSE){
         auto lastword = GetLastError();
         printStringHex("Error registering raw input devices. Code:", lastword);
@@ -120,7 +166,6 @@ void registerDevices(const HWND windowHandle){
 
 void RawInputThreadMain(){
     // std::this_thread::sleep_for(std::chrono::milliseconds(2000));
-
     cout.Setup();
     cout.SetConsoleName("Raw Input Tool");
     cout.AppendMessage("Messages appear here:");

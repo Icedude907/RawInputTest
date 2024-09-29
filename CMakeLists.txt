@@ -17,9 +17,13 @@ add_executable(RawInputTest "src/tests/rawinput.cpp")
 add_executable(RawInputTest2 "src/tests/rawinput2.cpp")
 target_link_libraries(RawInputTest2 hid)
 
+# Input injection
+
 # Random extra test for console output
 add_executable(VirtualTerminalTest "src/tests/virtualterminal.cpp")
 
 # Useful program
-add_executable(RawInputTool "src/RawInputTool.cpp")
+add_executable(RawInputTool "src/RawInputTool.cpp" "src/Console.cpp")
 target_link_libraries(RawInputTest2 hid)
+
+# add_executable(Iterator "src/tests/iterator.cpp")
