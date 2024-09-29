@@ -35,8 +35,8 @@ struct KeyboardKey {
         return std::tie(lhs.code, lhs.E0, lhs.E1) < std::tie(rhs.code, rhs.E0, rhs.E1);
     }
     friend inline bool operator==(const KeyboardKey& lhs, const KeyboardKey& rhs){
-        return lhs.code == rhs.code 
-            && lhs.E0 == rhs.E0 
+        return lhs.code == rhs.code
+            && lhs.E0 == rhs.E0
             && lhs.E1 == rhs.E1;
     }
 
@@ -73,6 +73,9 @@ namespace std {
    Can't use unordered_map without defining a hashing function which would be a pain but again I didn't really get a clear error.
 */
 namespace keycodeTable{
+    // Edit: I found this handy dandy thing https://wiki.osdev.org/PS/2_Keyboard (see code set 1 - all kbd input is translated to this)
+    // NOTE: Many keyboards dont come with these keys, or they coalesce them with a function key.
+    // This function key doesn't seem to pass through to the OS - which is quite annoying.
     const static std::map<KeyboardKey, std::string> keycodetable = {
         // Alphabet codes. Aligns with the QUERTY layout but I've sorted them alphabetically.
         {0x1e, "a"}, {0x30, "b"}, {0x2e, "c"}, {0x20, "d"}, {0x12, "e"},
@@ -84,12 +87,12 @@ namespace keycodeTable{
 
         {0x02, "1"}, {0x03, "2"}, {0x04, "3"}, {0x05, "4"}, {0x06, "5"},
         {0x07, "6"}, {0x08, "7"}, {0x09, "8"}, {0x0a, "9"}, {0x0b, "0"},
-        
+
         {0x3b, "f1"}, {0x3c, "f2"}, {0x3d, "f3"}, {0x3e, "f4"}, {0x3f, "f5"},
         {0x40, "f6"}, {0x41, "f7"}, {0x42, "f8"}, {0x43, "f9"}, {0x44, "f10"},
         {0x57, "f11"},{0x58, "f12"},
-        
-        // Other querty rows
+
+        // Other querty keys
         {0x01, "esc"},
         {0x29, "`"}, {0x0c, "-"}, {0x0d, "="}, {0x0e, "bsp"},
         {0x0f, "tab"}, {0x1a, "["}, {0x1b, "]"}, {0x2b, "\\"},
@@ -103,13 +106,25 @@ namespace keycodeTable{
 
         // Arrow keys
         {{0x48,'-'}, "up"}, {{0x50,'-'}, "down"}, {{0x4b,'-'}, "left"}, {{0x4d,'-'}, "right"},
-        
-        // Numpad
 
-        // I would ignore these if I were you. 
+        // Other keys I found
+        {{0x37, '-'}, "prtsc"}, // + modnumlk
+        {{0x52, '-'}, "insrt"},
+        {{0x53, '-'}, "delet"},
+
+        // Numpad
+        {{0x47,'-'}, "nhome"}, {{0x49,'-'},"npgup"}, {{0x51,'-'},"npgdwn"}, {{0x4f,'-'},"end"},
+        {0x45, "numlk"}, {{0x35, '-'}, "n/"}, {0x37, "n*"}, {0x4a, "n-"},
+        {0x47, "n7"}, {0x48, "n8"}, {0x49, "n9"}, {0x4e, "np+"},
+        {0x4b, "n4"}, {0x4c, "n5"}, {0x4d, "n6"}, {{0x1c, '-'}, "nentr"},
+        {0x4f, "n1"}, {0x50, "n2"}, {0x51, "n3"},
+        {0x52, "n0"}, {0x53, "n."},
+
+        // I would ignore these if I were you.
         // I'm pretty sure these are mostly virtual since they don't exist on USB, only on PS2set1
         {{0x2a, '-'}, "modnumlk"}, {{0xAA,'-'}, "modshift"},    // For modifiers, just do it virtually. Make sure to ignore these codes if they are sent tho.
         {KEYBOARD_OVERRUN_MAKE_CODE, "overrun"},                // Idk if any modern keyboard will trigger this. Most silently fail.
+
     };
 
     // Gets the keycode from the table

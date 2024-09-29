@@ -88,7 +88,7 @@ class MouseState{
         }
     }
 
-    // Prints changes and resets state.
+    // Prints changes and resets some state.
     std::string to_string(){
         std::stringstream ss;
         if(Lb) { ss << "Lb "; }
@@ -107,7 +107,6 @@ class MouseState{
         return ss.str();
     }
 };
-// Kept for future use
 // TODO: State shouldn't logically be associated with a renderer. Separate using shared_ptr for more flexible use?
 struct State{
     KeyboardState kbdst;

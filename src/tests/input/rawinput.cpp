@@ -7,6 +7,8 @@
 #include <Windows.h>
 #include <hidusage.h>
 
+// This test utilises the rawinput api and dumps numerous packets to the console.
+
 LRESULT CALLBACK OnWindowEvent(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam){
 
     if(msg == WM_INPUT){ /*std::cout << "WM_INPUT MESSAGE RECEIVED!" << std::endl;*/ }
@@ -43,7 +45,7 @@ LRESULT CALLBACK OnWindowEvent(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam
         // However, you don't want that if you want to look at each device independently.
         // POINT coords; GetPhysicalCursorPos(&coords);
         // std::cout << "Abs: " << coords.x << ", " << coords.y;
-        
+
         if(mouse.usFlags == MOUSE_MOVE_RELATIVE) {
             std::cout << "Rel: dx " << mouse.lLastX << ", dy " << mouse.lLastY << " other: 0x" << std::hex << mouse.ulExtraInformation << std::dec;
         }
@@ -75,13 +77,13 @@ LRESULT CALLBACK OnWindowEvent(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam
         std::cout << "Other data: " << std::endl;
     }
     delete[] input;
-    return 0; 
+    return 0;
 }
 
 int main(){
     SetProcessDPIAware(); // For mouse co-ords.
-    // Must define a window to use background input. 
-    // Why this is required remains a mystery to this day. 
+    // Must define a window to use background input.
+    // Why this is required remains a mystery to this day.
     // We don't have to show it or render it or anything
     WNDCLASS wc = {
         .style = CS_VREDRAW | CS_HREDRAW,
@@ -97,7 +99,7 @@ int main(){
     };
     RegisterClass(&wc);
     HWND hwnd = CreateWindow("RawInputClass", "RawInputClass", WS_POPUP, 0, 0, 64, 64, 0, 0, GetModuleHandle(0), 0);
-    
+
     if (hwnd == nullptr){
         auto lastword = GetLastError();
         std::cout << "Error CreateWindow(). Code: 0x" << std::hex << lastword << std::endl;
@@ -111,7 +113,7 @@ int main(){
     device[0].usUsage = HID_USAGE_GENERIC_KEYBOARD;
     device[0].dwFlags = RIDEV_INPUTSINK | RIDEV_NOLEGACY; // SINK = BG in
     device[0].hwndTarget = hwnd;
-                                
+
     //capture all mouse input
     device[1].usUsagePage = HID_USAGE_PAGE_GENERIC;
     device[1].usUsage = HID_USAGE_GENERIC_MOUSE;

@@ -20,9 +20,5 @@ target_link_libraries(RawInputTest2 hid)
 # Input injection
 # Nothing here lol
 
-# Random extra test for console output
-add_executable(VirtualTerminalTest "src/tests/other/virtualterminal.cpp")
-
 # Useful program
 add_executable(RawInputTool "src/RawInputTool.cpp" "src/Console.cpp")
-target_link_libraries(RawInputTest2 hid)

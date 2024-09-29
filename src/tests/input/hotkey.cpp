@@ -21,9 +21,9 @@ int main(){
     MSG msg = {0};
     while (GetMessage(&msg, NULL, 0, 0) != 0){
         if (msg.message == WM_HOTKEY){
-            std::cout << "WM_HOTKEY received" << std::endl;            
+            std::cout << "WM_HOTKEY received" << std::endl;
         }
-    } 
- 
+    }
+
     return 0;
 }

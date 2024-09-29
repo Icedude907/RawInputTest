@@ -1,6 +1,7 @@
 /* General notes:
     Capital types tend to be windows types.
 */
+// I actually don't know why this file exists
 
 #include <stdint.h>
 #include <vector>
@@ -26,7 +27,7 @@ std::string getDeviceInstancePath(HANDLE handle){
     GetRawInputDeviceInfoA(handle, RIDI_DEVICENAME, NULL, &deviceInstancePathLen); // A = ascii, W = wide char (unicode)
     LPSTR deviceInstancePath = new CHAR[deviceInstancePathLen + 1]; // +1 for terminator? (Idk if its required.)
     GetRawInputDeviceInfoA(handle, RIDI_DEVICENAME, deviceInstancePath, &deviceInstancePathLen);
-    /* I just want to highlight how obtuse the below line is. 
+    /* I just want to highlight how obtuse the below line is.
       Does it make a copy of the string? Does it take ownership of the buffer by setting a pointer?
       You can't tell unless you read the docs. More self documenting code is good!
       `let str = std::string::copyCStr(deviceInstancePath) is much less obtuse.`
@@ -160,7 +161,7 @@ int main(){
         }
     }
 
-    // Clean up. 
+    // Clean up.
     // Not really essential cos windows frees everything but its good to do.
     // -------------
     DestroyWindow(windowHandle);
@@ -192,7 +193,7 @@ void processRawInput(const bool unfocusedInput, const RAWINPUT input[]){
         // However, you don't want that if you want to look at each device independently.
         // POINT coords; GetPhysicalCursorPos(&coords);
         // std::cout << "Abs: " << coords.x << ", " << coords.y;
-        
+
         if(mouse.usFlags == MOUSE_MOVE_RELATIVE) {
             std::cout << "Rel: dx " << mouse.lLastX << ", dy " << mouse.lLastY << " other: 0x" << std::hex << mouse.ulExtraInformation << std::dec;
         }
