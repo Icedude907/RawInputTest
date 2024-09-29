@@ -4,6 +4,11 @@
 
 #include <unordered_set>
 #include <sstream>
+#include <thread>
+#include <tuple>
+#include <map>
+
+#include <Windows.h>
 
 #include "Util.ipp"
 #include "WinUtil.ipp"
@@ -12,20 +17,57 @@
 
 // std::unordered_set<KeyboardKey> pressedButtons;
 
+struct dummy{};
+
+// Handles rendering of inputdisplays to the console.
+struct InputDisplays{
+    std::map<HANDLE, std::pair<i16, dummy>> displayedDevices;
+
+    // Tries to add the handle to the console. If it is already registered, nothing happens.
+    void add(HANDLE handle){
+        if(displayedDevices.find(handle) != displayedDevices.end()) return;
+        std::stringstream ss;
+        ss << 'x' << std::setfill('0') << std::setw(8) << std::hex << (size_t)handle;
+        displayedDevices.insert({handle, {cout.CreateStatusLine(ss.str()), {}}});
+    }
+    // Removes the given device.
+    // TODO: Reorder the lines when removing.
+    void remove(HANDLE handle){
+        auto entry = displayedDevices.find(handle);
+        auto entryLine = entry->second.first;
+        if(entry == displayedDevices.end()) return;
+        cout.DeleteStatusLine(entryLine);
+        // Shifts all the lines below up by one.
+        for (auto &[key, val] : displayedDevices){
+            if(val.first > entryLine) val.first--;
+        }
+        displayedDevices.erase(handle);
+    }
+};
+static InputDisplays inputDisplay;
+
 LRESULT CALLBACK windowCallback(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam){
     // Looking at `rawinputtest2` you will see a number of extra messages handled for completedness sake
     // This test won't deal with them because we are exclusively concerned with raw input, and will use the default processors in all other cases
     if(msg == WM_INPUT_DEVICE_CHANGE){
+        HANDLE deviceHandle = (HANDLE)lParam;
         std::stringstream ss;
         switch(wParam){
-            case GIDC_ARRIVAL: ss << "New Dev: "; break;
-            case GIDC_REMOVAL: ss << "Removed: "; break;
+            case GIDC_ARRIVAL: 
+                ss << "New Dev: ";
+                inputDisplay.add(deviceHandle);
+                break;
+            case GIDC_REMOVAL: 
+                ss << "Removed: ";
+                inputDisplay.remove(deviceHandle);
+                break;
             default: ss << "Something happened regarding a device on the system: ";
         }
-        HANDLE deviceHandle = (HANDLE)lParam;
-        auto deviceInstancePath = getDeviceInstancePath(deviceHandle);
-        ss << std::hex << deviceHandle << std::dec << ' ' << deviceInstancePath;
-        AppendMessage(ss.str());
+        ss << std::hex << deviceHandle << std::dec;
+        if(wParam == GIDC_ARRIVAL){
+            ss << ' ' << Util::Win::getDeviceInstancePath(deviceHandle);
+        }
+        cout.AppendMessage(ss.str());
         return 0; // 0 = good
     }else if(msg == WM_INPUT){
 
@@ -77,30 +119,25 @@ void registerDevices(const HWND windowHandle){
 }
 
 void RawInputThreadMain(){
-    std::cout << ConsoleManip::SetCursorBottomLine << ConsoleManip::SaveCursorPos << std::flush; // Do this to prevent messiness.
-    AppendMessage("Messages appear here:");
+    // std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+
+    cout.Setup();
+    cout.SetConsoleName("Raw Input Tool");
+    cout.AppendMessage("Messages appear here:");
+
+    cout.ShowOptions();
 
     auto windowName = "RawInput\'Window\'";
     auto windowHandle = createWindow(windowCallback, windowName, windowName);
     registerDevices(windowHandle);
 
-    // SavedPOS   |here
-    CreateStatusLine("-------------------------");
-    CreateStatusLine("This is the input display");
-    CreateStatusLine("Example text.");
-
-    // Inserting a message
-    AppendMessage("Here is a message!");
-
-    {
-        return;
-    }
+    cout.CreateStatusLine("----- INPUT -------------");
 
     MSG msg;
     BOOL ret;
     while(ret = GetMessage(&msg, NULL, 0, 0) != 0) {
         if (ret == -1){
-            AppendMessage("An error was recieved in the message processing loop.");
+            cout.AppendMessage("An error was recieved in the message processing loop.");
         }else{
             TranslateMessage(&msg);
             DispatchMessage(&msg);

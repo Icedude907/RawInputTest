@@ -1,4 +1,3 @@
-#include <stdint.h>
 #include <vector>
 #include <string>
 #include <iostream>
@@ -14,6 +13,7 @@ extern "C" { // Weird mingw issue Easily fixed.
 
 #include "KeyCodes.hpp"
 #include "RawInputThread.ipp"
+#include "Console.ipp"
 
 ////////////////////////////////////////////////
 // General layout of the program
@@ -45,21 +45,12 @@ Mouse 1 update 255) L+  R-  dx: +1, dy: -5
 // Unfortunately gonna have to use ReadConsoleInput to get these inputs because I don't want to quit out of focus and virtual terminal sequences can't help me
 */
 
-
-// https://docs.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences
-void EnableVirtualTerminalProcessing(HANDLE hOut){
-    DWORD dwMode = 0;
-    GetConsoleMode(hOut, &dwMode);
-    dwMode |= ENABLE_VIRTUAL_TERMINAL_PROCESSING;
-    SetConsoleMode(hOut, dwMode);
-}
-
 int main(){
     // Setup. May not all be required but I want to have it incase it prevents jank later on in development.
     SetProcessDPIAware();
     AllocConsole();
     HANDLE consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
-    EnableVirtualTerminalProcessing(consoleHandle);
+    Util::Win::getDeviceInstancePath(consoleHandle);
 
     // Start the threads
     std::thread rawInputThread(RawInputThreadMain);
