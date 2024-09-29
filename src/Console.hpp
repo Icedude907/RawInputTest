@@ -3,7 +3,6 @@
 #include <string>
 
 #include "IntTypes.hpp"
-#include "Util.hpp"
 
 // Virtual terminal sequences. https://docs.microsoft.com/en-us/windows/console/console-virtual-terminal-sequences
 // If an argument is given, it must be between 1-32767, negatives aren't allowed, 0 is treated as 1.
@@ -56,3 +55,4 @@ class Console{
 };
 
 static Console cout;
+#include "Util.hpp"

@@ -5,6 +5,7 @@
 #include <tuple>
 #include <map>
 #include <sstream>
+#include <iomanip>
 
 #include <Windows.h>
 
@@ -17,6 +18,15 @@ struct KeyboardKey {
     constexpr KeyboardKey(USHORT code): code(code), E0(false), E1(false){} // Also allows automagic conversion
     constexpr KeyboardKey(USHORT code, USHORT info): code(code), E0(info & RI_KEY_E0), E1(info & RI_KEY_E1) {}
     constexpr KeyboardKey(USHORT code, bool E0, bool E1): code(code), E0(E0), E1(E1){}
+    // Constructs KeyboardKey from the to_string notation.
+    // '-' E0, '|' E1, '+' E0+E1, else neither.
+    // Use of this is discouraged in runtime
+    constexpr KeyboardKey(USHORT code, char E): code(code){
+        if     (E == '-'){ E0 = true;  E1 = false; }
+        else if(E == '|'){ E0 = false; E1 = true;  }
+        else if(E == '+'){ E0 = true;  E1 = true;  }
+        else             { E0 = false; E1 = false; }
+    }
 
     // Used for sorting algorithms.
     // Lower code first. If tied then no E0 is less. If tied then no E1 is less.
@@ -85,8 +95,21 @@ namespace keycodeTable{
         {0x0f, "tab"}, {0x1a, "["}, {0x1b, "]"}, {0x2b, "\\"},
         {0x3a, "caps"}, {0x27, ";"}, {0x28, "'"}, {0x1c, "entr"},
         {0x2a, "shift"}, {0x33, ","}, {0x34, "."}, {0x35, "/"}, {0x36, "rshift"},
-        {0x1d, "ctrl"}, /*{0x33, "fn"},*/ {{0x5b, true, false}, "win"}, {0x38, "alt"}, {0x39, "space"},
-            {{0x38, true, false}, "ralt"}, {{0x5d, true, false}, "app"}, {{0x1d, true, false}, "rctrl"},
+        // The "fn" key I have in the bottom corner of my laptop actually never makes it to windows apparently.
+        // However, since it effects the function of other keys, when they are pressed *some of* those inputs go through to rawinput
+        // Either way, wouldn't reccommend having the fn key as a default keybind.
+        {0x1d, "ctrl"}, {{0x5b,'-'}, "os"}, {0x38, "alt"}, {0x39, "space"},
+            {{0x38,'-'}, "ralt"}, {{0x5c,'-'}, "ros"}, {{0x5d,'-'}, "menu"}, {{0x1d,'-'}, "rctrl"},
+
+        // Arrow keys
+        {{0x48,'-'}, "up"}, {{0x50,'-'}, "down"}, {{0x4b,'-'}, "left"}, {{0x4d,'-'}, "right"},
+        
+        // Numpad
+
+        // I would ignore these if I were you. 
+        // I'm pretty sure these are mostly virtual since they don't exist on USB, only on PS2set1
+        {{0x2a, '-'}, "modnumlk"}, {{0xAA,'-'}, "modshift"},    // For modifiers, just do it virtually. Make sure to ignore these codes if they are sent tho.
+        {KEYBOARD_OVERRUN_MAKE_CODE, "overrun"},                // Idk if any modern keyboard will trigger this. Most silently fail.
     };
 
     // Gets the keycode from the table

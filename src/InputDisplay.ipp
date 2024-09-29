@@ -42,12 +42,76 @@ class KeyboardState{
         return ss.str();
     }
 };
+class MouseState{
+    public: // Mousebuttons
+    bool Lb, Rb, Mb, B4, B5;
+    SHORT wheel; SHORT hwheel;
+    LONG totalx, totaly;
+    LONG relx, rely;
+    LONG absx, absy;
 
+    MouseState(): Lb(false), Rb(false), Mb(false), B4(false), B5(false),
+        wheel(0), hwheel(0), totalx(0), totaly(0),
+        relx(0), rely(0), absx(0), absy(0) {
+
+    }
+    
+    void update(RAWMOUSE mouse){
+        USHORT flags = mouse.usButtonFlags;
+        USHORT data = mouse.usButtonData;
+        if(flags & RI_MOUSE_LEFT_BUTTON_DOWN  ){ Lb = true;  }
+        if(flags & RI_MOUSE_LEFT_BUTTON_UP    ){ Lb = false; }
+        if(flags & RI_MOUSE_RIGHT_BUTTON_DOWN ){ Rb = true;  }
+        if(flags & RI_MOUSE_RIGHT_BUTTON_UP   ){ Rb = false; }
+        if(flags & RI_MOUSE_MIDDLE_BUTTON_DOWN){ Mb = true;  }
+        if(flags & RI_MOUSE_MIDDLE_BUTTON_UP  ){ Mb = false; }
+        if(flags & RI_MOUSE_BUTTON_4_DOWN     ){ B4 = true;  }
+        if(flags & RI_MOUSE_BUTTON_4_UP       ){ B4 = false; }
+        if(flags & RI_MOUSE_BUTTON_5_DOWN     ){ B5 = true;  }
+        if(flags & RI_MOUSE_BUTTON_5_UP       ){ B5 = false; }
+        if(flags & RI_MOUSE_WHEEL){ wheel += (SHORT)data; }
+        if(flags & RI_MOUSE_HWHEEL){ hwheel += (SHORT)data; }
+
+        if(mouse.lLastX != 0 || mouse.lLastY != 0){
+            if(mouse.usFlags == MOUSE_MOVE_RELATIVE) {
+                relx = mouse.lLastX;
+                rely = mouse.lLastY;
+                totalx += mouse.lLastX;
+                totaly += mouse.lLastY;
+            }
+            if(mouse.usFlags == MOUSE_MOVE_ABSOLUTE) {
+                absx = mouse.lLastX;
+                absy = mouse.lLastY;
+                totalx = absx;
+                totaly = absy;
+            }
+        }
+    }
+
+    // Prints changes and resets state.
+    std::string to_string(){
+        std::stringstream ss;
+        if(Lb) { ss << "Lb "; }
+        if(Rb) { ss << "Rb "; }
+        if(Mb) { ss << "Mb "; }
+        if(B4) { ss << "4b "; }
+        if(B5) { ss << "5b "; }
+             if( wheel){ ss << "Wheel "  << wheel; }
+        else if(hwheel){ ss << "HWheel " << wheel; }
+        if(relx || rely){ ss << "Rel:" << relx << ", " << rely << ' '; }
+        if(absx || absy){ ss << "Abs:" << absx << ", " << absy << ' '; }
+        ss << "Total: " << totalx << ", " << totaly;
+
+        wheel = 0; hwheel = 0;
+        relx = 0; rely = 0; absx = 0; absy = 0;
+        return ss.str();
+    }
+};
 // Kept for future use
 // TODO: State shouldn't logically be associated with a renderer. Separate using shared_ptr for more flexible use?
 struct State{
     KeyboardState kbdst;
-
+    MouseState moust;
     State(){
 
     }

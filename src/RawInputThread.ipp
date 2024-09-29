@@ -2,10 +2,10 @@
 // This actually prevents making multiple compliation units.
 #pragma once
 
-#include <unordered_set>
-#include <sstream>
-#include <thread>
+#include <memory>
 #include <tuple>
+#include <map>
+#include <thread>
 #include <map>
 
 #include <Windows.h>
@@ -21,7 +21,8 @@ static InputDisplay inputDisplay;
 
 // TODO: Process touchpad data
 // TODO: Make keyboard and mouse displays better (as the comment in RawInputTool.cpp)
-void processRawInput(const bool unfocusedInput, const RAWINPUT input[]){
+void processRawInput(const bool unfocusedInput, const RAWINPUT* input){
+    // Ptr is important since the struct can actually be of arbitrary length depending on if it's raw hid input.
     auto header = input->header;
     std::stringstream ss;
 
@@ -31,43 +32,26 @@ void processRawInput(const bool unfocusedInput, const RAWINPUT input[]){
         State& state = inputDisplay.getStateOrAdd(header.hDevice);
         if(keybd.Flags & 1 == RI_KEY_BREAK){ state.kbdst.remove(kk); }
         else{ state.kbdst.add(kk); }
+
         ss << "KBD : " << state.kbdst.to_string();
         if(keybd.ExtraInformation != 0){ ss <<" other: 0x" << std::hex << keybd.ExtraInformation << std::dec; }
-
     }else if(input->header.dwType == RIM_TYPEMOUSE){
         auto mouse = input->data.mouse;
-        ss << "MOUS: " << std::dec;
+        State& state = inputDisplay.getStateOrAdd(header.hDevice);
         
-        if(mouse.lLastX != 0 || mouse.lLastY != 0){
-            if(mouse.usFlags == MOUSE_MOVE_RELATIVE) {
-                ss << "Rel: dx " << mouse.lLastX << ", dy " << mouse.lLastY;
-            }
-            if(mouse.usFlags == MOUSE_MOVE_ABSOLUTE) {
-                ss << "Abs:  x " << mouse.lLastX << ",  y " << mouse.lLastY;
-            }
-            if(mouse.usButtonFlags != 0){ ss << ", "; }
-        }
+        state.moust.update(mouse);
+        ss << "MOUS: " << state.moust.to_string();
         if(mouse.ulExtraInformation != 0){ ss <<" other: 0x" << std::hex << mouse.ulExtraInformation << std::dec; }
+    }else if(input->header.dwType == RIM_TYPEHID){
+        ss << "HID/";
+        auto hid = input->data.hid;
+        // dwSizeHid = size per object
+        // dwCount = number of objects
+        // bRawData = array of bytes of raw data, should cast
+        //      sizeof(bRawData) = dwSizeHid * dwCount
 
-        if(mouse.usButtonFlags != 0){
-            if(mouse.usButtonFlags & RI_MOUSE_LEFT_BUTTON_DOWN  ){ ss << "Lp "; }
-            if(mouse.usButtonFlags & RI_MOUSE_LEFT_BUTTON_UP    ){ ss << "L^ "; }
-            if(mouse.usButtonFlags & RI_MOUSE_RIGHT_BUTTON_DOWN ){ ss << "Rp "; }
-            if(mouse.usButtonFlags & RI_MOUSE_RIGHT_BUTTON_UP   ){ ss << "R^ "; }
-            if(mouse.usButtonFlags & RI_MOUSE_MIDDLE_BUTTON_DOWN){ ss << "Mp "; }
-            if(mouse.usButtonFlags & RI_MOUSE_MIDDLE_BUTTON_UP  ){ ss << "M^ "; }
-            if(mouse.usButtonFlags & RI_MOUSE_BUTTON_4_DOWN     ){ ss << "4p "; }
-            if(mouse.usButtonFlags & RI_MOUSE_BUTTON_4_UP       ){ ss << "4^ "; }
-            if(mouse.usButtonFlags & RI_MOUSE_BUTTON_5_DOWN     ){ ss << "5p "; }
-            if(mouse.usButtonFlags & RI_MOUSE_BUTTON_5_UP       ){ ss << "5^ "; }
-            if(mouse.usButtonFlags & RI_MOUSE_WHEEL){
-                ss << "Wheel: " << (SHORT)mouse.usButtonData;
-            }
-            if(mouse.usButtonFlags & RI_MOUSE_HWHEEL){
-                ss << "HWhel: " << (SHORT)mouse.usButtonData;
-            }
-        }
-        ss;
+        // Windows Precision Touchpad input
+
     }else{
         ss << "Other data: ";
     }
@@ -102,12 +86,11 @@ LRESULT CALLBACK windowCallback(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lPara
         HRAWINPUT rawInputPacketHandle = (HRAWINPUT)lParam;
         UINT size = 0;
         GetRawInputData(rawInputPacketHandle, RID_INPUT, NULL, &size, sizeof(RAWINPUTHEADER));
-        RAWINPUT* input = new RAWINPUT[size];
-        GetRawInputData(rawInputPacketHandle, RID_INPUT, input, &size, sizeof(RAWINPUTHEADER));
+        std::unique_ptr<RAWINPUT[]> input(new RAWINPUT[size]);
+        GetRawInputData(rawInputPacketHandle, RID_INPUT, input.get(), &size, sizeof(RAWINPUTHEADER));
 
-        processRawInput(GET_RAWINPUT_CODE_WPARAM(wParam), input);
+        processRawInput(GET_RAWINPUT_CODE_WPARAM(wParam), input.get());
 
-        delete[] input;
         return TRUE;
     }
     
@@ -132,7 +115,7 @@ HWND createWindow(const WNDPROC callback, const LPCSTR className, const LPCSTR w
     HWND windowHandle = CreateWindow(className, windowName, WS_POPUP, 0, 0, 64, 64, 0, 0, GetModuleHandle(NULL), NULL);
     if (windowHandle == NULL){
         auto lastword = GetLastError();
-        printStringHex("Error CreateWindow(). Code:", lastword);
+        Util::printStringHex("Error CreateWindow(). Code:", lastword);
     }
     return windowHandle;
 }
@@ -160,7 +143,7 @@ void registerDevices(const HWND windowHandle){
 
     if (RegisterRawInputDevices(device, deviceCount, sizeof(device[0])) == FALSE){
         auto lastword = GetLastError();
-        printStringHex("Error registering raw input devices. Code:", lastword);
+        Util::printStringHex("Error registering raw input devices. Code:", lastword);
     }
 }
 

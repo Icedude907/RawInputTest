@@ -47,8 +47,7 @@ int main(){
     // Setup. May not all be required but I want to have it incase it prevents jank later on in development.
     SetProcessDPIAware();
     AllocConsole();
-    HANDLE consoleHandle = GetStdHandle(STD_OUTPUT_HANDLE);
-    Util::Win::EnableVirtualTerminalProcessing(consoleHandle);
+    Util::Win::EnableVirtualTerminalProcessing(GetStdHandle(STD_OUTPUT_HANDLE));
 
     // Start the threads
     std::thread rawInputThread(RawInputThreadMain);

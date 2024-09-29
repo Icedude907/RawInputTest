@@ -12,18 +12,17 @@ else()
 endif()
 
 # Background input tests
-add_executable(HotkeyAPITest "src/tests/hotkey.cpp")
-add_executable(RawInputTest "src/tests/rawinput.cpp")
-add_executable(RawInputTest2 "src/tests/rawinput2.cpp")
+add_executable(HotkeyAPITest "src/tests/input/hotkey.cpp")
+add_executable(RawInputTest  "src/tests/input/rawinput.cpp")
+add_executable(RawInputTest2 "src/tests/input/rawinput2.cpp")
 target_link_libraries(RawInputTest2 hid)
 
 # Input injection
+# Nothing here lol
 
 # Random extra test for console output
-add_executable(VirtualTerminalTest "src/tests/virtualterminal.cpp")
+add_executable(VirtualTerminalTest "src/tests/other/virtualterminal.cpp")
 
 # Useful program
 add_executable(RawInputTool "src/RawInputTool.cpp" "src/Console.cpp")
 target_link_libraries(RawInputTest2 hid)
-
-# add_executable(Iterator "src/tests/iterator.cpp")

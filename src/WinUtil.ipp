@@ -1,6 +1,8 @@
 #pragma once
 
+#include <memory>
 #include <string>
+
 #include <Windows.h>
 
 namespace Util::Win{
@@ -12,17 +14,18 @@ namespace Util::Win{
         SetConsoleMode(hOut, dwMode);
     }
 
-    // Not optimal but I don't care.
+    // FIXME: Not optimal.=
     std::string getDeviceInstancePath(HANDLE handle){
-        UINT deviceInstancePathLen; // One of: RIDI_PREPARSEDDATA  RIDI_DEVICENAME  RIDI_DEVICEINFO
+        UINT deviceInstancePathLen; // One of: RIDI_PREPARSEDDATA  RIDI_DEVICENAME  RIDI_DEVICEINFO. TODO: Implement other functions
         GetRawInputDeviceInfoA(handle, RIDI_DEVICENAME, NULL, &deviceInstancePathLen);
-        LPSTR deviceInstancePath = new CHAR[deviceInstancePathLen + 1]; // +1 for terminator? (Idk if its required.)
-        GetRawInputDeviceInfoA(handle, RIDI_DEVICENAME, deviceInstancePath, &deviceInstancePathLen);
+        // heap CHAR[] == LPSTR but can't use LPSTR because new[] requires a different template override (since it uses delete[]). Epic...
+        std::unique_ptr<CHAR[]> deviceInstancePath(new CHAR[deviceInstancePathLen + 1]); // +1 for terminator? (Idk if its required.)
+        GetRawInputDeviceInfoA(handle, RIDI_DEVICENAME, deviceInstancePath.get(), &deviceInstancePathLen);
 
-        std::string str = std::string(deviceInstancePath);
-
-        delete[] deviceInstancePath;
+        // TODO: Can I get away without this?
+        std::string str = std::string(deviceInstancePath.get());
         return str;
     }
 
+    
 }
