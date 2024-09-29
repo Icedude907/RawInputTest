@@ -75,6 +75,7 @@ LRESULT CALLBACK OnWindowEvent(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam
         std::cout << "Other data: " << std::endl;
     }
     delete[] input;
+    return 0; 
 }
 
 int main(){
